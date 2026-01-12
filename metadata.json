@@ -1,0 +1,5 @@
+{
+  "name": "Copy of 레시피 메이커 (Recipe Maker)",
+  "description": "냉장고 속 재료와 식사 시간을 선택하여 최적의 요리 레시피 3가지를 추천받는 스마트 주방 도우미입니다.",
+  "requestFramePermissions": []
+}
