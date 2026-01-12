@@ -1,8 +1,35 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { MealTime, RecipeResponse } from "./types";
+import { MealTime, RecipeResponse, Recipe } from "./types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+
+const generateRecipeImage = async (recipeName: string): Promise<string | undefined> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: { 
+        parts: [{ 
+          text: `A professional, appetizing, high-resolution food photography of ${recipeName}. Close up shot, soft studio lighting, wooden table background, gourmet presentation.` 
+        }] 
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: "16:9"
+        }
+      }
+    });
+
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+  } catch (error) {
+    console.error(`Failed to generate image for ${recipeName}`, error);
+  }
+  return undefined;
+};
 
 export const getRecipes = async (ingredients: string[], mealTime: MealTime): Promise<RecipeResponse> => {
   const prompt = `냉장고에 있는 다음 재료들을 활용하여 ${mealTime} 식사에 적합한 요리 레시피 3가지를 추천해줘: ${ingredients.join(', ')}. 
@@ -51,10 +78,21 @@ export const getRecipes = async (ingredients: string[], mealTime: MealTime): Pro
   });
 
   const jsonStr = response.text || '{"recipes": []}';
+  let data: RecipeResponse;
   try {
-    return JSON.parse(jsonStr) as RecipeResponse;
+    data = JSON.parse(jsonStr);
   } catch (error) {
     console.error("Failed to parse recipes JSON", error);
     return { recipes: [] };
   }
+
+  // 각 레시피에 대해 이미지 생성 (병렬 처리)
+  const recipesWithImages = await Promise.all(
+    data.recipes.map(async (recipe: Recipe) => {
+      const imageUrl = await generateRecipeImage(recipe.recipeName);
+      return { ...recipe, imageUrl };
+    })
+  );
+
+  return { recipes: recipesWithImages };
 };

@@ -16,6 +16,7 @@ export interface Recipe {
   prepTime: string;
   ingredients: Ingredient[];
   instructions: string[];
+  imageUrl?: string; // 추가됨
 }
 
 export interface RecipeResponse {
